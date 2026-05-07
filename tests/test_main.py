@@ -17,7 +17,7 @@ import pathlib
 
 import pytest
 from fastapi.testclient import TestClient
-from main import app
+from main import app, counters
 
 # ---------------------------------------------------------------------------
 # Shared test client (module-scope so the ASGI lifespan runs once)
@@ -219,3 +219,79 @@ def test_unknown_path_returns_404():
     assert response.status_code == 404, (
         f"Expected 404 for unknown path, got {response.status_code}"
     )
+
+
+# ===========================================================================
+# New tests for ticket #3 — in-memory request counter / /stats endpoint
+# ===========================================================================
+
+import pytest
+
+
+@pytest.fixture
+def reset_counters():
+    """Zero all counter keys before the test. Opt-in only — NOT autouse."""
+    for k in counters:
+        counters[k] = 0
+    yield
+
+
+def test_stats_status_and_content_type(reset_counters):
+    """AC3: GET /stats returns 200 with application/json."""
+    response = client.get("/stats")
+    assert response.status_code == 200
+    assert "application/json" in response.headers.get("content-type", "")
+
+
+def test_stats_response_shape(reset_counters):
+    """AC7c: /stats response has exactly the right shape and key set."""
+    response = client.get("/stats")
+    body = response.json()
+    assert set(body.keys()) == {"counters"}
+    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
+    for v in body["counters"].values():
+        assert isinstance(v, int)
+
+
+def test_stats_initial_state(reset_counters):
+    """AC7a: After reset, /stats shows 0 for / and /health, 1 for /stats itself."""
+    response = client.get("/stats")
+    body = response.json()
+    assert body["counters"]["GET /"] == 0
+    assert body["counters"]["GET /health"] == 0
+    assert body["counters"]["GET /stats"] == 1  # counts itself (AC5)
+
+
+def test_stats_increments_on_root_and_health(reset_counters):
+    """AC7b: After M hits to / and N hits to /health, /stats shows M and N."""
+    for _ in range(3):
+        client.get("/")
+    for _ in range(2):
+        client.get("/health")
+    response = client.get("/stats")
+    body = response.json()
+    assert body["counters"]["GET /"] == 3
+    assert body["counters"]["GET /health"] == 2
+    assert body["counters"]["GET /stats"] == 1
+
+
+def test_stats_counts_itself(reset_counters):
+    """AC7d: Two consecutive /stats calls; second shows one more than first."""
+    r1 = client.get("/stats")
+    r2 = client.get("/stats")
+    v1 = r1.json()["counters"]["GET /stats"]
+    v2 = r2.json()["counters"]["GET /stats"]
+    assert v2 == v1 + 1
+
+
+def test_404_does_not_mutate_counters(reset_counters):
+    """AC6 / specs Q1: GET /nonexistent does not add new keys."""
+    keys_before = set(counters.keys())
+    client.get("/nonexistent")
+    assert set(counters.keys()) == keys_before
+
+
+def test_405_does_not_increment_root(reset_counters):
+    """AC6 / specs Q1: POST / returns 405 and does not increment GET / counter."""
+    client.post("/")
+    assert counters["GET /"] == 0
