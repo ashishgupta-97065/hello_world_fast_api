@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Todo List — Mini-Apps</title>
+  <style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d2e;
+  --border: #2d3150;
+  --text: #e8eaf6;
+  --text-muted: #7986a3;
+  --accent: #5c6bc0;
+  --accent-hover: #7986cb;
+  --success: #26a69a;
+  --warning: #ffa726;
+  --danger: #ef5350;
+  --info: #42a5f5;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.top-bar-link {
+  color: var(--accent);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.top-bar-link:hover { color: var(--accent-hover); }
+.top-bar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* Container */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Menu */
+.menu-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 2rem;
+}
+.menu-hero { text-align: center; margin-bottom: 2.5rem; }
+.menu-hero h1 { font-size: 2.2rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+.menu-hero p { color: var(--text-muted); font-size: 1.1rem; }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+.card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  text-decoration: none;
+  color: var(--text);
+}
+.card-emoji { font-size: 2rem; margin-bottom: 0.75rem; }
+.card-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.35rem; }
+.card-desc { font-size: 0.85rem; color: var(--text-muted); }
+.menu-footer { text-align: center; margin-top: 3rem; color: var(--text-muted); font-size: 0.85rem; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+.btn-ghost { background: transparent; color: var(--accent); border-color: var(--accent); }
+.btn-ghost:hover:not(:disabled) { background: rgba(92,107,192,0.12); }
+
+/* Inputs */
+input[type="text"], input[type="number"], input[type="range"], textarea, select {
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input[type="range"] { padding: 0; cursor: pointer; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 120px; }
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.badge-success { background: rgba(38,166,154,0.2); color: var(--success); }
+.badge-warning { background: rgba(255,167,38,0.2); color: var(--warning); }
+.badge-danger  { background: rgba(239,83,80,0.2);  color: var(--danger);  }
+.badge-info    { background: rgba(66,165,245,0.2);  color: var(--info);    }
+
+/* Validation */
+.validation {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  display: none;
+}
+.validation.visible { display: block; }
+
+/* Utility */
+.muted { color: var(--text-muted); }
+.mono { font-family: 'Courier New', Courier, monospace; }
+
+/* Tabs */
+.tab-strip {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 0.5rem 1rem;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+.tab.active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+.tab:hover:not(.active) { color: var(--text); }
+</style>
+</head>
+<body>
+  <header class="top-bar">
+    <a class="top-bar-link" href="../../">← Back to Menu</a>
+    <span class="top-bar-title">Todo List</span>
+  </header>
+  <main class="container">
+<h1 style="margin-bottom:1.5rem">Todo List</h1>
+<div style="display:flex;gap:0.75rem;margin-bottom:1.25rem">
+  <input type="text" id="task-input" placeholder="Enter a new task…" style="flex:1">
+  <button class="btn btn-primary" id="add-btn">Add</button>
+</div>
+<p class="validation" id="empty-msg">Please enter a task first.</p>
+<ul id="task-list" style="list-style:none;padding:0"></ul>
+<p class="muted" id="empty-state" style="margin-top:1rem">No tasks yet — add one above!</p>
+</main>
+  <script>(()=>{ 
+  const input   = document.getElementById('task-input');
+  const addBtn  = document.getElementById('add-btn');
+  const list    = document.getElementById('task-list');
+  const emptyMsg= document.getElementById('empty-msg');
+  const emptyState = document.getElementById('empty-state');
+  let tasks = [];
+
+  function render() {
+    list.innerHTML = '';
+    tasks.forEach((t, i) => {
+      const li = document.createElement('li');
+      li.style.cssText = 'display:flex;align-items:center;gap:0.75rem;padding:0.65rem 0.85rem;' +
+        'background:var(--surface);border:1px solid var(--border);border-radius:8px;margin-bottom:0.5rem';
+      const cb = document.createElement('input');
+      cb.type = 'checkbox';
+      cb.checked = t.done;
+      cb.style.cursor = 'pointer';
+      cb.onchange = () => { tasks[i].done = cb.checked; render(); };
+      const span = document.createElement('span');
+      span.textContent = t.text;
+      span.style.flex = '1';
+      if (t.done) {
+        span.style.textDecoration = 'line-through';
+        span.style.color = 'var(--text-muted)';
+      }
+      const del = document.createElement('button');
+      del.textContent = 'Delete';
+      del.className = 'btn btn-ghost';
+      del.style.padding = '0.25rem 0.6rem';
+      del.style.fontSize = '0.8rem';
+      del.onclick = () => { tasks.splice(i, 1); render(); };
+      li.append(cb, span, del);
+      list.appendChild(li);
+    });
+    emptyState.style.display = tasks.length ? 'none' : 'block';
+  }
+
+  function addTask() {
+    const text = input.value.trim();
+    if (!text) { emptyMsg.classList.add('visible'); return; }
+    emptyMsg.classList.remove('visible');
+    tasks.push({ text, done: false });
+    input.value = '';
+    render();
+  }
+
+  addBtn.onclick = addTask;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') addTask();
+  });
+
+  render();
+ })();</script>
+</body>
+</html>

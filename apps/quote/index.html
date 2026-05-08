@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Random Quote — Mini-Apps</title>
+  <style>
+:root {
+  --bg: #0f1117;
+  --surface: #1a1d2e;
+  --border: #2d3150;
+  --text: #e8eaf6;
+  --text-muted: #7986a3;
+  --accent: #5c6bc0;
+  --accent-hover: #7986cb;
+  --success: #26a69a;
+  --warning: #ffa726;
+  --danger: #ef5350;
+  --info: #42a5f5;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  line-height: 1.6;
+  min-height: 100vh;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* Top bar */
+.top-bar {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1.5rem;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+.top-bar-link {
+  color: var(--accent);
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+.top-bar-link:hover { color: var(--accent-hover); }
+.top-bar-title {
+  font-weight: 600;
+  font-size: 1rem;
+  color: var(--text);
+}
+
+/* Container */
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+}
+
+/* Menu */
+.menu-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 3rem 1.5rem 2rem;
+}
+.menu-hero { text-align: center; margin-bottom: 2.5rem; }
+.menu-hero h1 { font-size: 2.2rem; font-weight: 700; color: var(--text); margin-bottom: 0.5rem; }
+.menu-hero p { color: var(--text-muted); font-size: 1.1rem; }
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.25rem;
+}
+.card {
+  display: block;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 1.5rem;
+  text-decoration: none;
+  color: var(--text);
+  transition: transform 0.15s ease, border-color 0.15s ease;
+}
+.card:hover {
+  transform: translateY(-3px);
+  border-color: var(--accent);
+  text-decoration: none;
+  color: var(--text);
+}
+.card-emoji { font-size: 2rem; margin-bottom: 0.75rem; }
+.card-name { font-weight: 600; font-size: 1rem; margin-bottom: 0.35rem; }
+.card-desc { font-size: 0.85rem; color: var(--text-muted); }
+.menu-footer { text-align: center; margin-top: 3rem; color: var(--text-muted); font-size: 0.85rem; }
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.55rem 1.2rem;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, opacity 0.15s ease;
+}
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn-primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border-color: var(--border); }
+.btn-secondary:hover:not(:disabled) { border-color: var(--accent); }
+.btn-ghost { background: transparent; color: var(--accent); border-color: var(--accent); }
+.btn-ghost:hover:not(:disabled) { background: rgba(92,107,192,0.12); }
+
+/* Inputs */
+input[type="text"], input[type="number"], input[type="range"], textarea, select {
+  width: 100%;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.9rem;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.15s ease;
+}
+input[type="range"] { padding: 0; cursor: pointer; }
+input:focus, textarea:focus, select:focus { border-color: var(--accent); }
+textarea { resize: vertical; min-height: 120px; }
+
+/* Badge */
+.badge {
+  display: inline-block;
+  padding: 0.25rem 0.65rem;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.badge-success { background: rgba(38,166,154,0.2); color: var(--success); }
+.badge-warning { background: rgba(255,167,38,0.2); color: var(--warning); }
+.badge-danger  { background: rgba(239,83,80,0.2);  color: var(--danger);  }
+.badge-info    { background: rgba(66,165,245,0.2);  color: var(--info);    }
+
+/* Validation */
+.validation {
+  color: var(--danger);
+  font-size: 0.85rem;
+  margin-top: 0.4rem;
+  display: none;
+}
+.validation.visible { display: block; }
+
+/* Utility */
+.muted { color: var(--text-muted); }
+.mono { font-family: 'Courier New', Courier, monospace; }
+
+/* Tabs */
+.tab-strip {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 0;
+}
+.tab {
+  padding: 0.5rem 1rem;
+  border-radius: 8px 8px 0 0;
+  cursor: pointer;
+  font-size: 0.9rem;
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+  border-bottom: none;
+  margin-bottom: -1px;
+}
+.tab.active {
+  color: var(--text);
+  background: var(--surface);
+  border-color: var(--border);
+  border-bottom-color: var(--surface);
+}
+.tab:hover:not(.active) { color: var(--text); }
+</style>
+</head>
+<body>
+  <header class="top-bar">
+    <a class="top-bar-link" href="../../">← Back to Menu</a>
+    <span class="top-bar-title">Random Quote</span>
+  </header>
+  <main class="container">
+<div style="max-width:640px;margin:0 auto;text-align:center;padding:2rem 0">
+  <h1 style="margin-bottom:2rem">Random Quote</h1>
+  <div id="quote-card" style="background:var(--surface);border:1px solid var(--border);
+    border-radius:16px;padding:2.5rem;margin-bottom:2rem;transition:opacity 0.2s ease">
+    <blockquote id="quote-text"
+      style="font-size:1.35rem;font-style:italic;line-height:1.7;margin-bottom:1rem;color:var(--text)">
+    </blockquote>
+    <cite id="quote-author" style="font-size:0.95rem;color:var(--text-muted);font-style:normal"></cite>
+  </div>
+  <button class="btn btn-primary" id="next-btn" style="font-size:1rem;padding:0.65rem 1.75rem">Next</button>
+</div>
+</main>
+  <script>(()=>{ 
+  const quotes = [
+    {"text": "The only way to do great work is to love what you do.", "author": "Steve Jobs"},
+    {"text": "In the middle of every difficulty lies opportunity.", "author": "Albert Einstein"},
+    {"text": "It does not matter how slowly you go as long as you do not stop.", "author": "Confucius"},
+    {"text": "Life is what happens when you're busy making other plans.", "author": "John Lennon"},
+    {"text": "The future belongs to those who believe in the beauty of their dreams.", "author": "Eleanor Roosevelt"},
+    {"text": "It is during our darkest moments that we must focus to see the light.", "author": "Aristotle"},
+    {"text": "Believe you can and you're halfway there.", "author": "Theodore Roosevelt"},
+    {"text": "You are never too old to set another goal or to dream a new dream.", "author": "C.S. Lewis"},
+    {"text": "To handle yourself, use your head; to handle others, use your heart.", "author": "Eleanor Roosevelt"},
+    {"text": "You miss 100% of the shots you don't take.", "author": "Wayne Gretzky"},
+    {"text": "Whether you think you can or you think you can't, you're right.", "author": "Henry Ford"},
+    {"text": "I have learned over the years that when one's mind is made up, this diminishes fear.", "author": "Rosa Parks"},
+    {"text": "I alone cannot change the world, but I can cast a stone across the waters to create many ripples.", "author": "Mother Teresa"},
+    {"text": "Nothing is impossible, the word itself says 'I'm possible'!", "author": "Audrey Hepburn"},
+    {"text": "The question isn't who is going to let me; it's who is going to stop me.", "author": "Ayn Rand"},
+    {"text": "You become what you believe.", "author": "Oprah Winfrey"},
+    {"text": "The most difficult thing is the decision to act; the rest is merely tenacity.", "author": "Amelia Earhart"},
+    {"text": "How wonderful it is that nobody need wait a single moment before starting to improve the world.", "author": "Anne Frank"},
+    {"text": "An unexamined life is not worth living.", "author": "Socrates"},
+    {"text": "Spread love everywhere you go. Let no one ever come to you without leaving happier.", "author": "Mother Teresa"},
+    {"text": "When you reach the end of your rope, tie a knot in it and hang on.", "author": "Franklin D. Roosevelt"},
+    {"text": "Always remember that you are absolutely unique. Just like everyone else.", "author": "Margaret Mead"},
+    {"text": "Do not go where the path may lead; go instead where there is no path and leave a trail.", "author": "Ralph Waldo Emerson"},
+    {"text": "You will face many defeats in life, but never let yourself be defeated.", "author": "Maya Angelou"},
+    {"text": "The greatest glory in living lies not in never falling, but in rising every time we fall.", "author": "Nelson Mandela"}
+  ];
+
+  const card   = document.getElementById('quote-card');
+  const textEl = document.getElementById('quote-text');
+  const authEl = document.getElementById('quote-author');
+  const nextBtn = document.getElementById('next-btn');
+
+  function showQuote(q) {
+    card.style.opacity = '0';
+    setTimeout(() => {
+      textEl.textContent = '“' + q.text + '”';
+      authEl.textContent = '— ' + q.author;
+      card.style.opacity = '1';
+    }, 200);
+  }
+
+  function pickRandom() {
+    return quotes[Math.floor(Math.random() * quotes.length)];
+  }
+
+  nextBtn.onclick = () => showQuote(pickRandom());
+  showQuote(pickRandom());
+ })();</script>
+</body>
+</html>
