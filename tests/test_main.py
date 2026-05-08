@@ -295,3 +295,59 @@ def test_405_does_not_increment_root(reset_counters):
     """AC6 / specs Q1: POST / returns 405 and does not increment GET / counter."""
     client.post("/")
     assert counters["GET /"] == 0
+
+
+# ===========================================================================
+# New tests for ticket #4 — /version endpoint
+# ===========================================================================
+
+from main import APP_VERSION
+
+
+def test_version_status_code():
+    """AC2: GET /version must return HTTP 200."""
+    response = client.get("/version")
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}"
+    )
+
+
+def test_version_json_body():
+    """AC3: GET /version must return exactly {\"version\": \"<string>\"}."""
+    response = client.get("/version")
+    body = response.json()
+    assert set(body.keys()) == {"version"}, f"Unexpected keys: {body.keys()}"
+    assert isinstance(body["version"], str), "version value must be a string"
+
+
+def test_version_content_type():
+    """AC4: GET /version Content-Type must include application/json."""
+    response = client.get("/version")
+    assert "application/json" in response.headers.get("content-type", ""), (
+        f"Unexpected Content-Type: {response.headers.get('content-type')}"
+    )
+
+
+def test_version_post_returns_405():
+    """AC6: POST /version is not defined; FastAPI must return 405."""
+    response = client.post("/version")
+    assert response.status_code == 405, (
+        f"Expected 405 for POST /version, got {response.status_code}"
+    )
+
+
+def test_version_does_not_mutate_counters():
+    """AC7: GET /version must not add new keys to the counters dict."""
+    keys_before = set(counters.keys())
+    client.get("/version")
+    assert set(counters.keys()) == keys_before, (
+        "GET /version added unexpected keys to counters"
+    )
+
+
+def test_version_reflects_constant():
+    """AC5: GET /version body must reflect the APP_VERSION constant."""
+    response = client.get("/version")
+    assert response.json() == {"version": APP_VERSION}, (
+        f"Endpoint returned {response.json()!r}, expected {{'version': {APP_VERSION!r}}}"
+    )

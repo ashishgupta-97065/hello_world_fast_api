@@ -1,5 +1,7 @@
 from fastapi import FastAPI
 
+APP_VERSION = "1.0.0"
+
 app = FastAPI()
 
 counters: dict[str, int] = {
@@ -25,3 +27,8 @@ def read_health() -> dict:
 def read_stats() -> dict:
     counters["GET /stats"] += 1
     return {"counters": counters}
+
+
+@app.get("/version")
+def read_version() -> dict:
+    return {"version": APP_VERSION}
