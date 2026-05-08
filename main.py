@@ -1,32 +1,25 @@
 from fastapi import FastAPI
+import stats
 
 APP_VERSION = "1.0.0"
 
 app = FastAPI()
-
-counters: dict[str, int] = {
-    "GET /": 0,
-    "GET /health": 0,
-    "GET /stats": 0,
-}
+app.add_middleware(stats.StatsMiddleware)
 
 
 @app.get("/")
 def read_root() -> dict:
-    counters["GET /"] += 1
     return {"message": "Hello, World!"}
 
 
 @app.get("/health")
 def read_health() -> dict:
-    counters["GET /health"] += 1
     return {"status": "ok"}
 
 
 @app.get("/stats")
 def read_stats() -> dict:
-    counters["GET /stats"] += 1
-    return {"counters": counters}
+    return stats.snapshot()
 
 
 @app.get("/version")
@@ -43,6 +36,10 @@ def read_ping(msg: str = "") -> dict:
 
 @app.post("/reset")
 def reset_counters() -> dict:
-    for key in counters:
-        counters[key] = 0
+    stats.reset_counters()
     return {"reset": True}
+
+
+@app.on_event("startup")
+def _populate_counters() -> None:
+    stats.init_counters(app)
