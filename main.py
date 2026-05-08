@@ -6,11 +6,16 @@ from datetime import datetime, timezone
 
 import psutil
 from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 from pydantic import BaseModel
 import stats
+import pages
 
 APP_VERSION = "1.0.0"
 START_TIME: float = time.time()
+
+# Expose counters dict for tests that import it directly from main.
+counters = stats._counters
 
 
 class VersionResponse(BaseModel):
@@ -21,9 +26,59 @@ app = FastAPI()
 app.add_middleware(stats.StatsMiddleware)
 
 
-@app.get("/")
-def read_root() -> dict:
-    return {"message": "Hello, World!"}
+@app.get("/", response_class=HTMLResponse)
+def read_root() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_menu())
+
+
+@app.get("/apps/todo", response_class=HTMLResponse)
+def app_todo() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_todo())
+
+
+@app.get("/apps/pomodoro", response_class=HTMLResponse)
+def app_pomodoro() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_pomodoro())
+
+
+@app.get("/apps/markdown", response_class=HTMLResponse)
+def app_markdown() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_markdown())
+
+
+@app.get("/apps/palette", response_class=HTMLResponse)
+def app_palette() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_palette())
+
+
+@app.get("/apps/bmi", response_class=HTMLResponse)
+def app_bmi() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_bmi())
+
+
+@app.get("/apps/password", response_class=HTMLResponse)
+def app_password() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_password())
+
+
+@app.get("/apps/word-counter", response_class=HTMLResponse)
+def app_word_counter() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_word_counter())
+
+
+@app.get("/apps/unit-converter", response_class=HTMLResponse)
+def app_unit_converter() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_unit_converter())
+
+
+@app.get("/apps/quote", response_class=HTMLResponse)
+def app_quote() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_quote())
+
+
+@app.get("/apps/dice", response_class=HTMLResponse)
+def app_dice() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_dice())
 
 
 @app.get("/health")

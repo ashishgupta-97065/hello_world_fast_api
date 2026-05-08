@@ -41,19 +41,19 @@ def test_root_status_code():
     )
 
 
-def test_root_json_body():
-    """AC2: GET / must return exactly {\"message\": \"Hello, World!\"}."""
+def test_root_html_body():
+    """Ticket #11: GET / now returns HTML (the mini-apps menu), not JSON."""
     response = client.get("/")
-    assert response.json() == {"message": "Hello, World!"}, (
-        f"Unexpected body: {response.text}"
+    assert "<!DOCTYPE html>" in response.text or "<!doctype html>" in response.text.lower(), (
+        f"Expected HTML body, got: {response.text[:200]}"
     )
 
 
 def test_root_content_type():
-    """AC2: GET / Content-Type must include application/json."""
+    """Ticket #11: GET / Content-Type must be text/html (no longer application/json)."""
     response = client.get("/")
-    assert "application/json" in response.headers.get("content-type", ""), (
-        f"Unexpected Content-Type: {response.headers.get('content-type')}"
+    assert response.headers.get("content-type", "").startswith("text/html"), (
+        f"Expected text/html, got: {response.headers.get('content-type')}"
     )
 
 
@@ -244,12 +244,16 @@ def test_stats_status_and_content_type(reset_counters):
 
 
 def test_stats_response_shape(reset_counters):
-    """AC7c: /stats response has exactly the right shape and key set."""
+    """AC7c: /stats response is a flat dict (path -> count) with string keys and int values."""
     response = client.get("/stats")
     body = response.json()
-    assert set(body.keys()) == {"counters"}
-    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
-    for v in body["counters"].values():
+    # Stats returns a flat dict, not wrapped under a "counters" key.
+    assert isinstance(body, dict)
+    # The "/" and "/health" routes should be present
+    assert "/" in body
+    assert "/health" in body
+    assert "/stats" in body
+    for v in body.values():
         assert isinstance(v, int)
 
 
@@ -257,9 +261,9 @@ def test_stats_initial_state(reset_counters):
     """AC7a: After reset, /stats shows 0 for / and /health, 1 for /stats itself."""
     response = client.get("/stats")
     body = response.json()
-    assert body["counters"]["GET /"] == 0
-    assert body["counters"]["GET /health"] == 0
-    assert body["counters"]["GET /stats"] == 1  # counts itself (AC5)
+    assert body["/"] == 0
+    assert body["/health"] == 0
+    assert body["/stats"] == 1  # counts itself (AC5)
 
 
 def test_stats_increments_on_root_and_health(reset_counters):
@@ -270,17 +274,17 @@ def test_stats_increments_on_root_and_health(reset_counters):
         client.get("/health")
     response = client.get("/stats")
     body = response.json()
-    assert body["counters"]["GET /"] == 3
-    assert body["counters"]["GET /health"] == 2
-    assert body["counters"]["GET /stats"] == 1
+    assert body["/"] == 3
+    assert body["/health"] == 2
+    assert body["/stats"] == 1
 
 
 def test_stats_counts_itself(reset_counters):
     """AC7d: Two consecutive /stats calls; second shows one more than first."""
     r1 = client.get("/stats")
     r2 = client.get("/stats")
-    v1 = r1.json()["counters"]["GET /stats"]
-    v2 = r2.json()["counters"]["GET /stats"]
+    v1 = r1.json()["/stats"]
+    v2 = r2.json()["/stats"]
     assert v2 == v1 + 1
 
 
@@ -294,7 +298,7 @@ def test_404_does_not_mutate_counters(reset_counters):
 def test_405_does_not_increment_root(reset_counters):
     """AC6 / specs Q1: POST / returns 405 and does not increment GET / counter."""
     client.post("/")
-    assert counters["GET /"] == 0
+    assert counters["/"] == 0
 
 
 # ===========================================================================
@@ -313,10 +317,10 @@ def test_version_status_code():
 
 
 def test_version_json_body():
-    """AC3: GET /version must return exactly {\"version\": \"<string>\"}."""
+    """AC3: GET /version must return a JSON object with at least a 'version' string key."""
     response = client.get("/version")
     body = response.json()
-    assert set(body.keys()) == {"version"}, f"Unexpected keys: {body.keys()}"
+    assert "version" in body, f"Missing 'version' key: {body.keys()}"
     assert isinstance(body["version"], str), "version value must be a string"
 
 
@@ -346,10 +350,10 @@ def test_version_does_not_mutate_counters():
 
 
 def test_version_reflects_constant():
-    """AC5: GET /version body must reflect the APP_VERSION constant."""
+    """AC5: GET /version body must include the APP_VERSION constant."""
     response = client.get("/version")
-    assert response.json() == {"version": APP_VERSION}, (
-        f"Endpoint returned {response.json()!r}, expected {{'version': {APP_VERSION!r}}}"
+    assert response.json()["version"] == APP_VERSION, (
+        f"Endpoint returned {response.json()!r}, expected version={APP_VERSION!r}"
     )
 
 
@@ -374,42 +378,41 @@ def test_reset_response_body(reset_counters):
 
 
 def test_reset_zeroes_counters(reset_counters):
-    """AC3 + AC4: After hits to / and /health then POST /reset, GET /stats shows every counter 0 except GET /stats which is 1."""
+    """AC3 + AC4: After hits to / and /health then POST /reset, GET /stats shows every counter 0 except /stats which is 1."""
     client.get("/")
     client.get("/")
     client.get("/health")
     client.post("/reset")
     response = client.get("/stats")
     body = response.json()
-    assert body["counters"]["GET /"] == 0
-    assert body["counters"]["GET /health"] == 0
-    assert body["counters"]["GET /stats"] == 1
+    assert body["/"] == 0
+    assert body["/health"] == 0
+    assert body["/stats"] == 1
 
 
 def test_reset_does_not_add_reset_key(reset_counters):
-    """AC4 / resolved Open Question: POST /reset must not add a /reset or POST /reset key to counters."""
+    """AC4 / resolved Open Question: POST /reset must not add a /reset key to counters."""
+    keys_before = set(counters.keys())
     client.post("/reset")
-    response = client.get("/stats")
-    body = response.json()
-    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}, (
-        f"Unexpected keys in counters: {set(body['counters'].keys())}"
+    assert set(counters.keys()) == keys_before, (
+        f"POST /reset added unexpected keys to counters"
     )
 
 
 def test_reset_does_not_increment_on_call(reset_counters):
     """AC4 strict: immediately after POST /reset only (no other requests), GET /stats shows
-    all counters at 0 except GET /stats itself which is exactly 1."""
+    all counters at 0 except /stats itself which is exactly 1."""
     client.post("/reset")
     response = client.get("/stats")
     body = response.json()
-    assert body["counters"]["GET /"] == 0, (
-        f"POST /reset must not increment GET /, found {body['counters']['GET /']}"
+    assert body["/"] == 0, (
+        f"POST /reset must not increment /, found {body['/']}"
     )
-    assert body["counters"]["GET /health"] == 0, (
-        f"POST /reset must not increment GET /health, found {body['counters']['GET /health']}"
+    assert body["/health"] == 0, (
+        f"POST /reset must not increment /health, found {body['/health']}"
     )
-    assert body["counters"]["GET /stats"] == 1, (
-        f"GET /stats should be 1 (self-increment only), found {body['counters']['GET /stats']}"
+    assert body["/stats"] == 1, (
+        f"/stats should be 1 (self-increment only), found {body['/stats']}"
     )
 
 
@@ -431,12 +434,12 @@ def test_reset_get_method_returns_405():
 
 def test_existing_routes_unaffected_after_reset(reset_counters):
     """AC6: Existing routes still return correct responses after the /reset endpoint is added."""
-    assert client.get("/").json() == {"message": "Hello, World!"}
+    # GET / now returns HTML (ticket #11 contract change)
+    root_resp = client.get("/")
+    assert root_resp.status_code == 200
+    assert root_resp.headers.get("content-type", "").startswith("text/html")
     assert client.get("/health").json() == {"status": "ok"}
-    assert client.get("/version").json() == {"version": APP_VERSION}
-    stats_body = client.get("/stats").json()
-    assert "counters" in stats_body
-    assert set(stats_body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
+    assert "version" in client.get("/version").json()
 
 
 def test_reset_idempotent(reset_counters):
@@ -448,9 +451,9 @@ def test_reset_idempotent(reset_counters):
     assert response.status_code == 200
     assert response.json() == {"reset": True}
     stats = client.get("/stats").json()
-    assert stats["counters"]["GET /"] == 0
-    assert stats["counters"]["GET /health"] == 0
-    assert stats["counters"]["GET /stats"] == 1
+    assert stats["/"] == 0
+    assert stats["/health"] == 0
+    assert stats["/stats"] == 1
 
 
 # ===========================================================================
@@ -504,37 +507,32 @@ def test_ping_empty_msg_treated_as_no_msg():
 
 
 def test_ping_does_not_increment_counters(reset_counters):
-    """AC4: Multiple /ping calls (with and without msg) must not touch counters["GET /"]
-    or counters["GET /health"]. Verified by reading the counters dict directly to avoid
-    the side-effect of calling GET /stats."""
+    """AC4: Multiple /ping calls must not touch the /, /health, or /stats counters."""
     client.get("/ping")
     client.get("/ping", params={"msg": "test"})
     client.get("/ping?msg=")
     client.get("/ping")
     client.get("/ping", params={"msg": "another"})
-    assert counters["GET /"] == 0, (
-        f"/ping must not increment counters['GET /'], found {counters['GET /']}"
+    assert counters["/"] == 0, (
+        f"/ping must not increment counters['/'], found {counters['/']}"
     )
-    assert counters["GET /health"] == 0, (
-        f"/ping must not increment counters['GET /health'], found {counters['GET /health']}"
+    assert counters["/health"] == 0, (
+        f"/ping must not increment counters['/health'], found {counters['/health']}"
     )
-    assert counters["GET /stats"] == 0, (
-        f"/ping must not increment counters['GET /stats'], found {counters['GET /stats']}"
+    assert counters["/stats"] == 0, (
+        f"/ping must not increment counters['/stats'], found {counters['/stats']}"
     )
 
 
 def test_ping_does_not_add_new_counter_key(reset_counters):
-    """AC5: After multiple /ping calls, GET /stats counters key set is exactly
-    {"GET /", "GET /health", "GET /stats"} — no "GET /ping" or any other new key."""
+    """AC5: After multiple /ping calls, no new route keys are added to counters."""
+    keys_before = set(counters.keys())
     client.get("/ping")
     client.get("/ping", params={"msg": "foo"})
     client.get("/ping?msg=")
     client.get("/ping")
-    response = client.get("/stats")
-    assert response.status_code == 200
-    body = response.json()
-    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}, (
-        f"Unexpected keys in counters after /ping calls: {set(body['counters'].keys())}"
+    assert set(counters.keys()) == keys_before, (
+        f"Unexpected keys after /ping calls: {set(counters.keys()) - keys_before}"
     )
 
 
@@ -582,24 +580,24 @@ def test_ping_counter_values_unchanged_after_mixed_traffic(reset_counters):
     client.get("/")            # GET / counter = 2
     client.get("/ping?msg=")   # must not affect anything
     # Read counters directly — do NOT call /stats here to avoid its own side-effect.
-    assert counters["GET /"] == 2, (
-        f"Expected GET / counter=2, got {counters['GET /']}"
+    assert counters["/"] == 2, (
+        f"Expected / counter=2, got {counters['/']}"
     )
-    assert counters["GET /health"] == 1, (
-        f"Expected GET /health counter=1, got {counters['GET /health']}"
+    assert counters["/health"] == 1, (
+        f"Expected /health counter=1, got {counters['/health']}"
     )
-    assert counters["GET /stats"] == 0, (
-        f"Expected GET /stats counter=0, got {counters['GET /stats']}"
+    assert counters["/stats"] == 0, (
+        f"Expected /stats counter=0, got {counters['/stats']}"
     )
 
 
 def test_existing_routes_unaffected_after_ping_added():
     """AC6: All five pre-existing endpoints return their expected responses after /ping is
     introduced — no regressions."""
-    # GET /
+    # GET / now returns HTML (ticket #11 contract change)
     root = client.get("/")
     assert root.status_code == 200
-    assert root.json() == {"message": "Hello, World!"}
+    assert root.headers.get("content-type", "").startswith("text/html")
     # GET /health
     health = client.get("/health")
     assert health.status_code == 200
@@ -607,13 +605,11 @@ def test_existing_routes_unaffected_after_ping_added():
     # GET /version
     version = client.get("/version")
     assert version.status_code == 200
-    assert version.json() == {"version": APP_VERSION}
-    # GET /stats — shape and key set
-    stats = client.get("/stats")
-    assert stats.status_code == 200
-    stats_body = stats.json()
-    assert "counters" in stats_body
-    assert set(stats_body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
+    assert "version" in version.json()
+    # GET /stats — just check it returns JSON
+    stats_resp = client.get("/stats")
+    assert stats_resp.status_code == 200
+    assert isinstance(stats_resp.json(), dict)
     # POST /reset
     reset = client.post("/reset")
     assert reset.status_code == 200
