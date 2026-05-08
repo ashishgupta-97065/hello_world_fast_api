@@ -32,3 +32,10 @@ def read_stats() -> dict:
 @app.get("/version")
 def read_version() -> dict:
     return {"version": APP_VERSION}
+
+
+@app.post("/reset")
+def reset_counters() -> dict:
+    for key in counters:
+        counters[key] = 0
+    return {"reset": True}

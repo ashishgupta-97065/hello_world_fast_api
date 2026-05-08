@@ -351,3 +351,46 @@ def test_version_reflects_constant():
     assert response.json() == {"version": APP_VERSION}, (
         f"Endpoint returned {response.json()!r}, expected {{'version': {APP_VERSION!r}}}"
     )
+
+
+# ===========================================================================
+# New tests for ticket #6 — POST /reset endpoint
+# ===========================================================================
+
+def test_reset_status_code(reset_counters):
+    """AC1: POST /reset must return HTTP 200."""
+    response = client.post("/reset")
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}"
+    )
+
+
+def test_reset_response_body(reset_counters):
+    """AC2: POST /reset must return exactly {\"reset\": true}."""
+    response = client.post("/reset")
+    assert response.json() == {"reset": True}, (
+        f"Unexpected body: {response.text}"
+    )
+
+
+def test_reset_zeroes_counters(reset_counters):
+    """AC3 + AC4: After hits to / and /health then POST /reset, GET /stats shows every counter 0 except GET /stats which is 1."""
+    client.get("/")
+    client.get("/")
+    client.get("/health")
+    client.post("/reset")
+    response = client.get("/stats")
+    body = response.json()
+    assert body["counters"]["GET /"] == 0
+    assert body["counters"]["GET /health"] == 0
+    assert body["counters"]["GET /stats"] == 1
+
+
+def test_reset_does_not_add_reset_key(reset_counters):
+    """AC4 / resolved Open Question: POST /reset must not add a /reset or POST /reset key to counters."""
+    client.post("/reset")
+    response = client.get("/stats")
+    body = response.json()
+    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}, (
+        f"Unexpected keys in counters: {set(body['counters'].keys())}"
+    )
