@@ -34,6 +34,13 @@ def read_version() -> dict:
     return {"version": APP_VERSION}
 
 
+@app.get("/ping")
+def read_ping(msg: str = "") -> dict:
+    if msg:
+        return {"message": "pong", "msg": msg}
+    return {"message": "pong"}
+
+
 @app.post("/reset")
 def reset_counters() -> dict:
     for key in counters:

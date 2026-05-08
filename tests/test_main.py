@@ -394,3 +394,227 @@ def test_reset_does_not_add_reset_key(reset_counters):
     assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}, (
         f"Unexpected keys in counters: {set(body['counters'].keys())}"
     )
+
+
+def test_reset_does_not_increment_on_call(reset_counters):
+    """AC4 strict: immediately after POST /reset only (no other requests), GET /stats shows
+    all counters at 0 except GET /stats itself which is exactly 1."""
+    client.post("/reset")
+    response = client.get("/stats")
+    body = response.json()
+    assert body["counters"]["GET /"] == 0, (
+        f"POST /reset must not increment GET /, found {body['counters']['GET /']}"
+    )
+    assert body["counters"]["GET /health"] == 0, (
+        f"POST /reset must not increment GET /health, found {body['counters']['GET /health']}"
+    )
+    assert body["counters"]["GET /stats"] == 1, (
+        f"GET /stats should be 1 (self-increment only), found {body['counters']['GET /stats']}"
+    )
+
+
+def test_reset_content_type(reset_counters):
+    """POST /reset Content-Type must include application/json."""
+    response = client.post("/reset")
+    assert "application/json" in response.headers.get("content-type", ""), (
+        f"Unexpected Content-Type: {response.headers.get('content-type')}"
+    )
+
+
+def test_reset_get_method_returns_405():
+    """GET /reset is not defined; FastAPI must return 405 Method Not Allowed."""
+    response = client.get("/reset")
+    assert response.status_code == 405, (
+        f"Expected 405 for GET /reset, got {response.status_code}"
+    )
+
+
+def test_existing_routes_unaffected_after_reset(reset_counters):
+    """AC6: Existing routes still return correct responses after the /reset endpoint is added."""
+    assert client.get("/").json() == {"message": "Hello, World!"}
+    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/version").json() == {"version": APP_VERSION}
+    stats_body = client.get("/stats").json()
+    assert "counters" in stats_body
+    assert set(stats_body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
+
+
+def test_reset_idempotent(reset_counters):
+    """POST /reset called twice in a row must still return 200 and leave all counters at 0."""
+    client.get("/")
+    client.get("/health")
+    client.post("/reset")
+    response = client.post("/reset")
+    assert response.status_code == 200
+    assert response.json() == {"reset": True}
+    stats = client.get("/stats").json()
+    assert stats["counters"]["GET /"] == 0
+    assert stats["counters"]["GET /health"] == 0
+    assert stats["counters"]["GET /stats"] == 1
+
+
+# ===========================================================================
+# New tests for ticket #7 — GET /ping endpoint with optional msg parameter
+# ===========================================================================
+
+def test_ping_no_msg_returns_pong():
+    """AC1: GET /ping (no query param) returns HTTP 200, body {"message": "pong"},
+    Content-Type application/json."""
+    response = client.get("/ping")
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}"
+    )
+    assert response.json() == {"message": "pong"}, (
+        f"Unexpected body: {response.text}"
+    )
+    assert "application/json" in response.headers.get("content-type", ""), (
+        f"Unexpected Content-Type: {response.headers.get('content-type')}"
+    )
+
+
+def test_ping_with_msg_echoes():
+    """AC2: GET /ping?msg=hello returns HTTP 200, body {"message": "pong", "msg": "hello"},
+    Content-Type application/json."""
+    response = client.get("/ping", params={"msg": "hello"})
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}"
+    )
+    assert response.json() == {"message": "pong", "msg": "hello"}, (
+        f"Unexpected body: {response.text}"
+    )
+    assert "application/json" in response.headers.get("content-type", ""), (
+        f"Unexpected Content-Type: {response.headers.get('content-type')}"
+    )
+
+
+def test_ping_empty_msg_treated_as_no_msg():
+    """AC3: GET /ping?msg= (param present but empty string) returns {"message": "pong"}
+    with no "msg" key — identical to the no-param case."""
+    response = client.get("/ping?msg=")
+    assert response.status_code == 200, (
+        f"Expected 200, got {response.status_code}"
+    )
+    body = response.json()
+    assert body == {"message": "pong"}, (
+        f"Expected exactly {{\"message\": \"pong\"}}, got {body}"
+    )
+    assert "msg" not in body, (
+        f"'msg' key must not appear when msg is empty string; body={body}"
+    )
+
+
+def test_ping_does_not_increment_counters(reset_counters):
+    """AC4: Multiple /ping calls (with and without msg) must not touch counters["GET /"]
+    or counters["GET /health"]. Verified by reading the counters dict directly to avoid
+    the side-effect of calling GET /stats."""
+    client.get("/ping")
+    client.get("/ping", params={"msg": "test"})
+    client.get("/ping?msg=")
+    client.get("/ping")
+    client.get("/ping", params={"msg": "another"})
+    assert counters["GET /"] == 0, (
+        f"/ping must not increment counters['GET /'], found {counters['GET /']}"
+    )
+    assert counters["GET /health"] == 0, (
+        f"/ping must not increment counters['GET /health'], found {counters['GET /health']}"
+    )
+    assert counters["GET /stats"] == 0, (
+        f"/ping must not increment counters['GET /stats'], found {counters['GET /stats']}"
+    )
+
+
+def test_ping_does_not_add_new_counter_key(reset_counters):
+    """AC5: After multiple /ping calls, GET /stats counters key set is exactly
+    {"GET /", "GET /health", "GET /stats"} — no "GET /ping" or any other new key."""
+    client.get("/ping")
+    client.get("/ping", params={"msg": "foo"})
+    client.get("/ping?msg=")
+    client.get("/ping")
+    response = client.get("/stats")
+    assert response.status_code == 200
+    body = response.json()
+    assert set(body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}, (
+        f"Unexpected keys in counters after /ping calls: {set(body['counters'].keys())}"
+    )
+
+
+def test_ping_post_returns_405():
+    """AC8: POST /ping is not defined; FastAPI must return 405 Method Not Allowed."""
+    response = client.post("/ping")
+    assert response.status_code == 405, (
+        f"Expected 405 for POST /ping, got {response.status_code}"
+    )
+
+
+@pytest.mark.parametrize("msg,expected_body", [
+    ("world", {"message": "pong", "msg": "world"}),
+    ("foo bar", {"message": "pong", "msg": "foo bar"}),
+    ("123", {"message": "pong", "msg": "123"}),
+    ("special!@#", {"message": "pong", "msg": "special!@#"}),
+])
+def test_ping_msg_echoed_verbatim(msg, expected_body):
+    """AC2 (parameterised): Various non-empty msg values are echoed back verbatim."""
+    response = client.get("/ping", params={"msg": msg})
+    assert response.status_code == 200, (
+        f"Expected 200 for msg={msg!r}, got {response.status_code}"
+    )
+    assert response.json() == expected_body, (
+        f"Unexpected body for msg={msg!r}: {response.text}"
+    )
+
+
+def test_ping_no_msg_body_is_byte_identical_to_empty_msg():
+    """AC3 (structural): Confirm that /ping and /ping?msg= produce exactly the same JSON body."""
+    r_no_param = client.get("/ping")
+    r_empty_param = client.get("/ping?msg=")
+    assert r_no_param.json() == r_empty_param.json(), (
+        f"No-param body {r_no_param.text!r} != empty-param body {r_empty_param.text!r}"
+    )
+
+
+def test_ping_counter_values_unchanged_after_mixed_traffic(reset_counters):
+    """AC4 (extended): Interleaved /ping calls among real traffic must not inflate /ping
+    contribution into existing counters."""
+    client.get("/")            # GET / counter = 1
+    client.get("/ping")        # must not affect anything
+    client.get("/health")      # GET /health counter = 1
+    client.get("/ping", params={"msg": "probe"})  # must not affect anything
+    client.get("/")            # GET / counter = 2
+    client.get("/ping?msg=")   # must not affect anything
+    # Read counters directly — do NOT call /stats here to avoid its own side-effect.
+    assert counters["GET /"] == 2, (
+        f"Expected GET / counter=2, got {counters['GET /']}"
+    )
+    assert counters["GET /health"] == 1, (
+        f"Expected GET /health counter=1, got {counters['GET /health']}"
+    )
+    assert counters["GET /stats"] == 0, (
+        f"Expected GET /stats counter=0, got {counters['GET /stats']}"
+    )
+
+
+def test_existing_routes_unaffected_after_ping_added():
+    """AC6: All five pre-existing endpoints return their expected responses after /ping is
+    introduced — no regressions."""
+    # GET /
+    root = client.get("/")
+    assert root.status_code == 200
+    assert root.json() == {"message": "Hello, World!"}
+    # GET /health
+    health = client.get("/health")
+    assert health.status_code == 200
+    assert health.json() == {"status": "ok"}
+    # GET /version
+    version = client.get("/version")
+    assert version.status_code == 200
+    assert version.json() == {"version": APP_VERSION}
+    # GET /stats — shape and key set
+    stats = client.get("/stats")
+    assert stats.status_code == 200
+    stats_body = stats.json()
+    assert "counters" in stats_body
+    assert set(stats_body["counters"].keys()) == {"GET /", "GET /health", "GET /stats"}
+    # POST /reset
+    reset = client.post("/reset")
+    assert reset.status_code == 200
+    assert reset.json() == {"reset": True}
