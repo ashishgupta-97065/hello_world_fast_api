@@ -1,5 +1,10 @@
+import os
+import random
+import socket
 import time
+from datetime import datetime, timezone
 
+import psutil
 from fastapi import FastAPI
 from pydantic import BaseModel
 import stats
@@ -55,6 +60,58 @@ def read_ping(msg: str = "") -> dict:
 def reset_counters() -> dict:
     stats.reset_counters()
     return {"reset": True}
+
+
+@app.get("/hostname")
+def read_hostname() -> dict:
+    return {"hostname": socket.gethostname()}
+
+
+@app.get("/env")
+def read_env() -> dict:
+    return {"environment": os.environ.get("APP_ENV", "development")}
+
+
+@app.get("/memory")
+def read_memory() -> dict:
+    rss_mb = round(psutil.Process().memory_info().rss / (1024 ** 2), 1)
+    return {"rss_mb": rss_mb}
+
+
+@app.get("/echo")
+def read_echo(message: str) -> dict:
+    return {"message": message}
+
+
+@app.get("/timestamp")
+def read_timestamp() -> dict:
+    return {"timestamp": datetime.now(timezone.utc).isoformat()}
+
+
+@app.get("/random")
+def read_random() -> dict:
+    return {"number": random.randint(1, 1000)}
+
+
+@app.get("/reverse")
+def read_reverse(text: str) -> dict:
+    return {"reversed": text[::-1]}
+
+
+@app.get("/upper")
+def read_upper(text: str) -> dict:
+    return {"upper": text.upper()}
+
+
+@app.get("/count")
+def read_count(text: str) -> dict:
+    return {"count": len(text)}
+
+
+@app.get("/palindrome")
+def read_palindrome(text: str) -> dict:
+    normalized = text.replace(" ", "").lower()
+    return {"is_palindrome": normalized == normalized[::-1]}
 
 
 @app.on_event("startup")
