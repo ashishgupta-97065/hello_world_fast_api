@@ -81,6 +81,56 @@ def app_dice() -> HTMLResponse:
     return HTMLResponse(content=pages.render_dice())
 
 
+@app.get("/apps/finance", response_class=HTMLResponse)
+def app_finance() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_finance())
+
+
+@app.get("/apps/habits", response_class=HTMLResponse)
+def app_habits() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_habits())
+
+
+@app.get("/apps/flashcards", response_class=HTMLResponse)
+def app_flashcards() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_flashcards())
+
+
+@app.get("/apps/budget", response_class=HTMLResponse)
+def app_budget() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_budget())
+
+
+@app.get("/apps/stopwatch", response_class=HTMLResponse)
+def app_stopwatch() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_stopwatch())
+
+
+@app.get("/apps/json-formatter", response_class=HTMLResponse)
+def app_json_formatter() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_json_formatter())
+
+
+@app.get("/apps/diff", response_class=HTMLResponse)
+def app_diff() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_diff())
+
+
+@app.get("/apps/recipe", response_class=HTMLResponse)
+def app_recipe() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_recipe())
+
+
+@app.get("/apps/pomodoro-pro", response_class=HTMLResponse)
+def app_pomodoro_pro() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_pomodoro_pro())
+
+
+@app.get("/apps/kanban", response_class=HTMLResponse)
+def app_kanban() -> HTMLResponse:
+    return HTMLResponse(content=pages.render_kanban())
+
+
 @app.get("/health")
 def read_health() -> dict:
     return {"status": "ok"}

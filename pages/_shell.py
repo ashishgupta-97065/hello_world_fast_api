@@ -207,7 +207,7 @@ def page(title: str, body_html: str, extra_css: str = "", extra_js: str = "") ->
 
 def render_menu() -> str:
     """Return the home menu HTML5 document."""
-    apps = [
+    originals = [
         ("todo",          "✅", "Todo List",               "Manage tasks with add, complete, and delete"),
         ("pomodoro",      "⏱️", "Pomodoro Timer",          "25-min work sessions with 5-min breaks"),
         ("markdown",      "📝", "Markdown Previewer",      "Live two-column Markdown-to-HTML preview"),
@@ -219,14 +219,32 @@ def render_menu() -> str:
         ("quote",         "💬", "Random Quote",            "Inspiring quotes from a curated collection"),
         ("dice",          "🎲", "Dice Roller",             "Roll D4–D20 with animated results"),
     ]
-    cards_html = "\n".join(
-        f'<a class="card" href="/apps/{slug}">'
-        f'<div class="card-emoji">{emoji}</div>'
-        f'<div class="card-name">{name}</div>'
-        f'<div class="card-desc">{desc}</div>'
-        f'</a>'
-        for slug, emoji, name, desc in apps
-    )
+    batch3 = [
+        ("finance",        "💰", "Personal Finance",  "Track income and expenses with category breakdown"),
+        ("habits",         "✅", "Habit Tracker",     "7-day grid with streaks and completion %"),
+        ("flashcards",     "🃏", "Flashcards",        "Build a deck and run a study session"),
+        ("budget",         "📊", "Budget Planner",    "Per-category budgets with progress bars"),
+        ("stopwatch",      "⏱️", "Stopwatch",         "Lap splits with best/worst markers"),
+        ("json-formatter", "{ }", "JSON Formatter",   "Format, minify, validate, and copy JSON"),
+        ("diff",           "🔀", "Text Diff",         "Line-by-line diff between two texts"),
+        ("recipe",         "🍳", "Recipe Scaler",     "Scale ingredients and auto-convert units"),
+        ("pomodoro-pro",   "🍅", "Pomodoro Pro",      "Modes, ring timer, session log, focus total"),
+        ("kanban",         "📋", "Kanban Board",      "Drag cards across To Do / In Progress / Done"),
+    ]
+
+    def cards(apps):
+        return "\n".join(
+            f'<a class="card" href="/apps/{slug}">'
+            f'<div class="card-emoji">{emoji}</div>'
+            f'<div class="card-name">{name}</div>'
+            f'<div class="card-desc">{desc}</div>'
+            f'</a>'
+            for slug, emoji, name, desc in apps
+        )
+
+    orig_html = cards(originals)
+    batch3_html = cards(batch3)
+
     return f"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -239,12 +257,21 @@ def render_menu() -> str:
   <main class="menu-container">
     <div class="menu-hero">
       <h1>Mini-Apps</h1>
-      <p>Ten tiny tools, all in your browser.</p>
+      <p>Twenty tiny tools, all in your browser.</p>
     </div>
-    <div class="card-grid">
-{cards_html}
-    </div>
-    <div class="menu-footer">10 apps &middot; no tracking &middot; runs entirely in your browser</div>
+    <section>
+      <h2 style="font-size:1rem;color:var(--text-muted);margin-bottom:1rem">Originals</h2>
+      <div class="card-grid">
+{orig_html}
+      </div>
+    </section>
+    <section style="margin-top:2rem">
+      <h2 style="font-size:1rem;color:var(--text-muted);margin-bottom:1rem">Batch 3</h2>
+      <div class="card-grid">
+{batch3_html}
+      </div>
+    </section>
+    <div class="menu-footer">20 apps &middot; no tracking &middot; runs entirely in your browser</div>
   </main>
 </body>
 </html>"""
