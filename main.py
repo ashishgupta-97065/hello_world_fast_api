@@ -43,3 +43,10 @@ def reset_counters() -> dict:
 @app.on_event("startup")
 def _populate_counters() -> None:
     stats.init_counters(app)
+
+
+# Populate counters at import time so TestClient (without lifespan context
+# manager) and any eager module-level code see a fully initialised counter map.
+# init_counters is idempotent, so the startup hook above is a safe no-op when
+# the server is started normally via uvicorn.
+stats.init_counters(app)
