@@ -1,7 +1,16 @@
+import time
+
 from fastapi import FastAPI
+from pydantic import BaseModel
 import stats
 
 APP_VERSION = "1.0.0"
+START_TIME: float = time.time()
+
+
+class VersionResponse(BaseModel):
+    version: str
+    uptime: int
 
 app = FastAPI()
 app.add_middleware(stats.StatsMiddleware)
@@ -22,9 +31,17 @@ def read_stats() -> dict:
     return stats.snapshot()
 
 
-@app.get("/version")
-def read_version() -> dict:
-    return {"version": APP_VERSION}
+@app.get(
+    "/version",
+    response_model=VersionResponse,
+    tags=["meta"],
+    summary="Application version and uptime",
+)
+def read_version() -> VersionResponse:
+    return VersionResponse(
+        version=APP_VERSION,
+        uptime=int(time.time() - START_TIME),
+    )
 
 
 @app.get("/ping")
